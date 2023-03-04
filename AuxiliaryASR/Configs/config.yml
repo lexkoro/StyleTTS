@@ -1,0 +1,36 @@
+log_dir: "Checkpoint"
+save_freq: 5
+device: "cuda"
+epochs: 150
+batch_size: 64
+pretrained_model: "/home/akorolev/master/projects/StyleTTS/AuxiliaryASR/Checkpoint/epoch_00010.pth"
+train_data: [
+            "/home/akorolev/master/projects/vits-emotts/filelists/borderlands2_en.csv",
+            "/home/akorolev/master/projects/vits-emotts/filelists/borderlands2_en.csv",
+            "/home/akorolev/master/projects/vits-emotts/filelists/emotional_train.csv",
+            "/home/akorolev/master/projects/vits-emotts/filelists/fallout4_en.csv",
+            "/home/akorolev/master/projects/vits-emotts/filelists/gametts_de.csv",
+            "/home/akorolev/master/projects/vits-emotts/filelists/kcd_de.csv",
+            "/home/akorolev/master/projects/vits-emotts/filelists/skyrim_jp.csv",
+            "/home/akorolev/master/projects/vits-emotts/filelists/sqnarrator.csv",
+            "/home/akorolev/master/projects/vits-emotts/filelists/warcraft_en.csv",
+            "/home/akorolev/master/projects/vits-emotts/filelists/witcher3_pl.csv",
+            "/home/akorolev/master/projects/vits-emotts/filelists/witcher3_ru.csv",
+            "/home/akorolev/master/projects/vits-emotts/filelists/witcher3_skyrim_en.csv",
+            "/home/akorolev/master/projects/vits-emotts/filelists/worldofwarcraft.csv"
+        ]
+val_data: ["/home/akorolev/master/projects/vits-emotts/filelists/test.csv"]
+
+preprocess_parasm:
+  sr: 22050
+  mel_params:
+    n_mels: 80
+
+model_params:
+   input_dim: 80
+   hidden_dim: 256
+   n_token: 95
+   token_embedding_dim: 512
+
+optimizer_params:
+  lr: 0.0005
