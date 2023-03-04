@@ -1,0 +1,71 @@
+log_dir: "Models/LJSpeech"
+first_stage_path: "first_stage.pth"
+save_freq: 2
+log_interval: 10
+device: "cuda"
+multigpu: false
+epochs_1st: 200 # number of epochs for first stage training
+epochs_2nd: 100 # number of peochs for second stage training
+batch_size: 32
+pretrained_model: ""
+second_stage_load_pretrained: false # set to true if the pre-trained model is for 2nd stage
+load_only_params: false # set to true if do not want to load epoch numbers and optimizer parameters
+
+train_data: [
+            "/home/akorolev/master/projects/vits-emotts/filelists/borderlands2_en.csv",
+            "/home/akorolev/master/projects/vits-emotts/filelists/borderlands2_en.csv",
+            "/home/akorolev/master/projects/vits-emotts/filelists/emotional_train.csv",
+            "/home/akorolev/master/projects/vits-emotts/filelists/fallout4_en.csv",
+            "/home/akorolev/master/projects/vits-emotts/filelists/gametts_de.csv",
+            "/home/akorolev/master/projects/vits-emotts/filelists/kcd_de.csv",
+            "/home/akorolev/master/projects/vits-emotts/filelists/skyrim_jp.csv",
+            "/home/akorolev/master/projects/vits-emotts/filelists/sqnarrator.csv",
+            "/home/akorolev/master/projects/vits-emotts/filelists/warcraft_en.csv",
+            "/home/akorolev/master/projects/vits-emotts/filelists/witcher3_pl.csv",
+            "/home/akorolev/master/projects/vits-emotts/filelists/witcher3_ru.csv",
+            "/home/akorolev/master/projects/vits-emotts/filelists/witcher3_skyrim_en.csv",
+            "/home/akorolev/master/projects/vits-emotts/filelists/worldofwarcraft.csv",
+            "home/akorolev/master/projects/vits-emotts/filelists/one_piece_jp.csv"
+        ]
+val_data: ["/home/akorolev/master/projects/vits-emotts/filelists/test.csv"]
+
+F0_path: "Utils/JDC/bst.t7"
+ASR_config: "Utils/ASR/config.yml"
+ASR_path: "Utils/ASR/epoch_00080.pth"
+
+preprocess_params:
+  sr: 22050
+  spect_params:
+    n_fft: 2048
+    win_length: 1024
+    hop_length: 256
+
+model_params:
+  hidden_dim: 512
+  n_token: 95
+  style_dim: 128
+  n_layer: 3
+  dim_in: 64
+  max_conv_dim: 512
+  n_mels: 100
+  dropout: 0.2
+
+loss_params:
+    lambda_mel: 5. # mel reconstruction loss (1st & 2nd stage)
+    lambda_adv: 1. # adversarial loss (1st & 2nd stage)
+    lambda_reg: 1. # adversarial regularization loss (1st & 2nd stage)
+    lambda_fm: 0.1 # feature matching loss (1st & 2nd stage)
+    
+    lambda_mono: 1. # monotonic alignment loss (1st stage, TMA)
+    lambda_s2s: 1. # sequence-to-sequence loss (1st stage, TMA)
+    TMA_epoch: 20 # TMA starting epoch (1st stage)
+
+    # https://github.com/yl4579/StyleTTS/issues/7
+    TMA_CEloss: false # whether to use cross-entropy (CE) loss for TMA
+
+    lambda_F0: 1. # F0 reconstruction loss (2nd stage)
+    lambda_norm: 1. # norm reconstruction loss (2nd stage)
+    lambda_dur: 1. # duration loss (2nd stage)
+
+optimizer_params:
+  lr: 0.0001
