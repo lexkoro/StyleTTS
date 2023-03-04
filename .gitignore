@@ -1,4 +1,0 @@
-*.tfevents.*
-StyleTTS/**/Checkpoint/*.pth
-__pychache__
-*.pth
