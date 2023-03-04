@@ -1,2 +1,2 @@
 *.tfevents.*
-*/Checkpoint/*
+StyleTTS/**/Checkpoint/*.pth
