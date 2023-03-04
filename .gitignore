@@ -1,2 +1,3 @@
 *.tfevents.*
 StyleTTS/**/Checkpoint/*.pth
+__pychache__
