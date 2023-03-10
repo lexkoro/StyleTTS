@@ -93,7 +93,11 @@ def main(config_path):
         " "
     ]  # get blank index
 
-    criterion = build_criterion(critic_params={"ctc": {"blank": blank_index},})
+    criterion = build_criterion(
+        critic_params={
+            "ctc": {"blank": blank_index},
+        }
+    )
 
     trainer = Trainer(
         model=model,

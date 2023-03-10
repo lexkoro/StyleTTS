@@ -1,37 +1,52 @@
-log_dir: "Models/LJSpeech"
-first_stage_path: "first_stage.pth"
+log_dir: "Models/GameTTS"
+first_stage_path: ""
 save_freq: 2
-log_interval: 10
+log_interval: 50
 device: "cuda"
-multigpu: false
-epochs_1st: 200 # number of epochs for first stage training
+multigpu: true
+epochs_1st: 250 # number of epochs for first stage training
 epochs_2nd: 100 # number of peochs for second stage training
-batch_size: 32
+batch_size: 64
 pretrained_model: ""
 second_stage_load_pretrained: false # set to true if the pre-trained model is for 2nd stage
 load_only_params: false # set to true if do not want to load epoch numbers and optimizer parameters
 
-train_data: [
-            "/home/akorolev/master/projects/vits-emotts/filelists/borderlands2_en.csv",
-            "/home/akorolev/master/projects/vits-emotts/filelists/borderlands2_en.csv",
-            "/home/akorolev/master/projects/vits-emotts/filelists/emotional_train.csv",
-            "/home/akorolev/master/projects/vits-emotts/filelists/fallout4_en.csv",
-            "/home/akorolev/master/projects/vits-emotts/filelists/gametts_de.csv",
-            "/home/akorolev/master/projects/vits-emotts/filelists/kcd_de.csv",
-            "/home/akorolev/master/projects/vits-emotts/filelists/skyrim_jp.csv",
-            "/home/akorolev/master/projects/vits-emotts/filelists/sqnarrator.csv",
-            "/home/akorolev/master/projects/vits-emotts/filelists/warcraft_en.csv",
-            "/home/akorolev/master/projects/vits-emotts/filelists/witcher3_pl.csv",
-            "/home/akorolev/master/projects/vits-emotts/filelists/witcher3_ru.csv",
-            "/home/akorolev/master/projects/vits-emotts/filelists/witcher3_skyrim_en.csv",
-            "/home/akorolev/master/projects/vits-emotts/filelists/worldofwarcraft.csv",
-            "home/akorolev/master/projects/vits-emotts/filelists/one_piece_jp.csv"
-        ]
-val_data: ["/home/akorolev/master/projects/vits-emotts/filelists/test.csv"]
+# train_data: [
+#             "/home/akorolev/master/projects/vits-emotts/filelists/borderlands2_en.csv",
+#             "/home/akorolev/master/projects/vits-emotts/filelists/borderlands2_de.csv",
+#             "/home/akorolev/master/projects/vits-emotts/filelists/emotional_train.csv",
+#             "/home/akorolev/master/projects/vits-emotts/filelists/fallout4_en.csv",
+#             "/home/akorolev/master/projects/vits-emotts/filelists/gametts_de.csv",
+#             "/home/akorolev/master/projects/vits-emotts/filelists/kcd_de.csv",
+#             "/home/akorolev/master/projects/vits-emotts/filelists/sqnarrator.csv",
+#             "/home/akorolev/master/projects/vits-emotts/filelists/warcraft_en.csv",
+#             "/home/akorolev/master/projects/vits-emotts/filelists/witcher3_pl.csv",
+#             "/home/akorolev/master/projects/vits-emotts/filelists/witcher3_ru.csv",
+#             "/home/akorolev/master/projects/vits-emotts/filelists/witcher3_skyrim_en.csv",
+#             "/home/akorolev/master/projects/vits-emotts/filelists/worldofwarcraft.csv",
+#             "home/akorolev/master/projects/vits-emotts/filelists/one_piece_jp.csv",
+#             "/home/akorolev/master/projects/vits-emotts/filelists/skyrim_jp.csv",
+#         ]
 
-F0_path: "Utils/JDC/bst.t7"
-ASR_config: "Utils/ASR/config.yml"
-ASR_path: "Utils/ASR/epoch_00080.pth"
+# /home/alexander/Projekte/TTS_Data/metadata/filelists
+
+train_data: [
+            /home/alexander/Projekte/TTS_Data/metadata/filelists/gametts_de.csv,
+            /home/alexander/Projekte/TTS_Data/metadata/filelists/borderlands2_de.csv,
+            /home/alexander/Projekte/TTS_Data/metadata/filelists/sqnarrator.csv,
+            /home/alexander/Projekte/TTS_Data/metadata/filelists/borderlands2_en.csv,
+            /home/alexander/Projekte/TTS_Data/metadata/filelists/fallout4_en.csv,
+            /home/alexander/Projekte/TTS_Data/metadata/filelists/warcraft_en.csv,
+            # /home/akorolev/master/projects/vits-emotts/filelists/witcher3_pl.csv,
+            # /home/akorolev/master/projects/vits-emotts/filelists/witcher3_ru.csv,
+            # /home/akorolev/master/projects/vits-emotts/filelists/emotional_train.csv
+        ]
+
+val_data: [/home/alexander/Projekte/TTS_Data/metadata/filelists/test.csv]
+
+F0_path: "/home/alexander/Projekte/StyleTTS/TTS/Utils/JDC/epoch_00070.pth"
+ASR_config: "/home/alexander/Projekte/StyleTTS/TTS/Utils/ASR/config.yml"
+ASR_path: "/home/alexander/Projekte/StyleTTS/TTS/Utils/ASR/epoch_00100.pth"
 
 preprocess_params:
   sr: 22050
@@ -47,7 +62,7 @@ model_params:
   n_layer: 3
   dim_in: 64
   max_conv_dim: 512
-  n_mels: 100
+  n_mels: 80
   dropout: 0.2
 
 loss_params:

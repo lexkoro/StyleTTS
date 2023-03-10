@@ -1,7 +1,4 @@
 # coding: utf-8
-import os
-import os.path as osp
-import time
 import random
 import numpy as np
 import random
@@ -9,91 +6,121 @@ import soundfile as sf
 import librosa
 
 import torch
-from torch import nn
 import torch.nn.functional as F
-import torchaudio
 from torch.utils.data import DataLoader
+from librosa.filters import mel as librosa_mel_fn
+from pathlib import Path
+from text_utils import TextCleaner
+from torch.utils.data.sampler import WeightedRandomSampler
 
 import logging
+
+MAX_WAV_VALUE = 32768.0
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-import os
-import os.path as osp
-import pandas as pd
-
-_pad = "$"
-_punctuation = ';:,.!?¡¿—…"«»“” '
-_letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-_letters_ipa = "ɑɐɒæɓʙβɔɕçɗɖðʤəɘɚɛɜɝɞɟʄɡɠɢʛɦɧħɥʜɨɪʝɭɬɫɮʟɱɯɰŋɳɲɴøɵɸθœɶʘɹɺɾɻʀʁɽʂʃʈʧʉʊʋⱱʌɣɤʍχʎʏʑʐʒʔʡʕʢǀǁǂǃˈˌːˑʼʴʰʱʲʷˠˤ˞↓↑→↗↘'̩'ᵻ"
-
-# Export all symbols:
-symbols = [_pad] + list(_punctuation) + list(_letters) + list(_letters_ipa)
-
-dicts = {}
-for i in range(len((symbols))):
-    dicts[symbols[i]] = i
-
-
-class TextCleaner:
-    def __init__(self, dummy=None):
-        self.word_index_dictionary = dicts
-
-    def __call__(self, text):
-        indexes = []
-        for char in text:
-            try:
-                indexes.append(self.word_index_dictionary[char])
-            except KeyError:
-                print(text)
-        return indexes
-
-
 np.random.seed(1)
 random.seed(1)
 
-MEL_PARAMS = {
-    "n_mels": 100,
-}
 
-to_mel = torchaudio.transforms.MelSpectrogram(
-    n_mels=80, n_fft=2048, win_length=1200, hop_length=300
-)
-mean, std = -4, 4
+def dynamic_range_compression(x, C=1, clip_val=1e-5):
+    return np.log(np.clip(x, a_min=clip_val, a_max=None) * C)
 
 
-def preprocess(wave):
-    wave_tensor = torch.from_numpy(wave).float()
-    mel_tensor = to_mel(wave_tensor)
-    mel_tensor = (torch.log(1e-5 + mel_tensor.unsqueeze(0)) - mean) / std
-    return mel_tensor
+def dynamic_range_decompression(x, C=1):
+    return np.exp(x) / C
+
+
+def dynamic_range_compression_torch(x, C=1, clip_val=1e-5):
+    return torch.log(torch.clamp(x, min=clip_val) * C)
+
+
+def dynamic_range_decompression_torch(x, C=1):
+    return torch.exp(x) / C
+
+
+def spectral_normalize_torch(magnitudes):
+    output = dynamic_range_compression_torch(magnitudes)
+    return output
+
+
+def spectral_de_normalize_torch(magnitudes):
+    output = dynamic_range_decompression_torch(magnitudes)
+    return output
+
+
+mel_basis = {}
+hann_window = {}
+
+
+def mel_spectrogram(
+    y, n_fft, num_mels, sampling_rate, hop_size, win_size, fmin, fmax, center=False
+):
+    # if torch.min(y) < -1.0:
+    #     print("min value is ", torch.min(y))
+    # if torch.max(y) > 1.0:
+    #     print("max value is ", torch.max(y))
+
+    global mel_basis, hann_window
+    if fmax not in mel_basis:
+        mel = librosa_mel_fn(
+            sr=sampling_rate, n_fft=n_fft, n_mels=num_mels, fmin=fmin, fmax=fmax
+        )
+        mel_basis[str(fmax) + "_" + str(y.device)] = (
+            torch.from_numpy(mel).float().to(y.device)
+        )
+        hann_window[str(y.device)] = torch.hann_window(win_size).to(y.device)
+
+    y = torch.nn.functional.pad(
+        y.unsqueeze(1),
+        (int((n_fft - hop_size) / 2), int((n_fft - hop_size) / 2)),
+        mode="reflect",
+    )
+    y = y.squeeze(1)
+
+    spec = torch.stft(
+        y,
+        n_fft,
+        hop_length=hop_size,
+        win_length=win_size,
+        window=hann_window[str(y.device)],
+        center=center,
+        pad_mode="reflect",
+        normalized=False,
+        onesided=True,
+        return_complex=True,
+    )
+    spec = torch.view_as_real(spec)
+
+    spec = torch.sqrt(spec.pow(2).sum(-1) + (1e-9))
+
+    spec = torch.matmul(mel_basis[str(fmax) + "_" + str(y.device)], spec)
+    spec = spectral_normalize_torch(spec)
+
+    return spec
 
 
 class FilePathDataset(torch.utils.data.Dataset):
     def __init__(
         self,
         data_list,
-        sr=24000,
+        sr=22050,
         data_augmentation=False,
         validation=False,
     ):
 
-        spect_params = SPECT_PARAMS
-        mel_params = MEL_PARAMS
-
         _data_list = [l[:-1].split("|") for l in data_list]
-        self.data_list = [data if len(data) == 3 else (*data, 0) for data in _data_list]
+        self.min_seq_len = int(0.6 * 22050)
+        self.data_list = [
+            (data[0], data[4], data[1])
+            for data in _data_list
+            if ((Path(data[0]).stat().st_size // 2) > self.min_seq_len)
+        ]
         self.text_cleaner = TextCleaner()
         self.sr = sr
 
-        self.to_melspec = torchaudio.transforms.MelSpectrogram(**MEL_PARAMS)
-
-        self.mean, self.std = -4, 4
-        self.data_augmentation = data_augmentation and (not validation)
         self.max_mel_length = 192
-
-    #         self.global_phonemizer = phonemizer.backend.EspeakBackend(language='en-us', preserve_punctuation=True,  with_stress=True)
 
     def __len__(self):
         return len(self.data_list)
@@ -103,8 +130,19 @@ class FilePathDataset(torch.utils.data.Dataset):
         path = data[0]
 
         wave, text_tensor, speaker_id = self._load_tensor(data)
+        wave_tensor = torch.from_numpy(wave).float()
 
-        mel_tensor = preprocess(wave).squeeze()
+        mel_tensor = mel_spectrogram(
+            wave_tensor.unsqueeze(0), 2048, 80, 22050, 256, 1024, 0, None, False
+        ).squeeze(0)
+
+        if (text_tensor.size(0) + 1) >= (mel_tensor.size(1) // 3):
+            mel_tensor = F.interpolate(
+                mel_tensor.unsqueeze(0),
+                size=(text_tensor.size(0) + 1) * 3,
+                align_corners=False,
+                mode="linear",
+            ).squeeze(0)
 
         acoustic_feature = mel_tensor.squeeze()
         length_feature = acoustic_feature.size(1)
@@ -114,12 +152,11 @@ class FilePathDataset(torch.utils.data.Dataset):
 
     def _load_tensor(self, data):
         wave_path, text, speaker_id = data
-        speaker_id = int(speaker_id)
         wave, sr = sf.read(wave_path)
         if wave.shape[-1] == 2:
             wave = wave[:, 0].squeeze()
-        if sr != 24000:
-            wave = librosa.resample(wave, sr, 24000)
+        if sr != 22050:
+            wave = librosa.resample(wave, sr, 22050)
             print(wave_path, sr)
 
         wave = np.concatenate([np.zeros([5000]), wave, np.zeros([5000])], axis=0)
@@ -132,19 +169,6 @@ class FilePathDataset(torch.utils.data.Dataset):
         text = torch.LongTensor(text)
 
         return wave, text, speaker_id
-
-    def _load_data(self, data):
-        wave, text_tensor, speaker_id = self._load_tensor(data)
-        mel_tensor = preprocess(wave).squeeze()
-
-        mel_length = mel_tensor.size(1)
-        if mel_length > self.max_mel_length:
-            random_start = np.random.randint(0, mel_length - self.max_mel_length)
-            mel_tensor = mel_tensor[
-                :, random_start : random_start + self.max_mel_length
-            ]
-
-        return mel_tensor, speaker_id
 
 
 class Collater(object):
@@ -205,14 +229,95 @@ def build_dataloader(
 
     dataset = FilePathDataset(path_list, validation=validation, **dataset_config)
     collate_fn = Collater(**collate_config)
+
+    if not validation:
+        sampler = get_weighted_sampler(
+            dataset.data_list,
+            by_emotion=False,
+            by_speaker=True,
+            by_language=False,
+        )
+
     data_loader = DataLoader(
         dataset,
         batch_size=batch_size,
-        shuffle=(not validation),
         num_workers=num_workers,
         drop_last=(not validation),
+        sampler=sampler if not validation else None,
         collate_fn=collate_fn,
         pin_memory=(device != "cpu"),
     )
 
     return data_loader
+
+
+def get_weighted_sampler(items, by_speaker=False, by_language=False, by_emotion=False):
+
+    dataset_samples_weight = 1.0
+
+    # language
+    if by_language:
+        language_names = np.array([item[3] for item in items])
+        unique_language_names = np.unique(language_names).tolist()
+        language_ids = [unique_language_names.index(l) for l in language_names]
+        language_count = np.array(
+            [len(np.where(language_names == l)[0]) for l in unique_language_names]
+        )
+        weight_language = 1.0 / language_count
+
+        language_samples_weight = np.array(
+            np.array([weight_language[l] for l in language_ids])
+        )
+        language_samples_weight = language_samples_weight / np.linalg.norm(
+            language_samples_weight
+        )
+
+        language_samples_weight = torch.from_numpy(language_samples_weight).float()
+        print("language_samples_weight", language_samples_weight)
+        dataset_samples_weight += language_samples_weight * 1.5
+
+    # speaker
+    if by_speaker:
+        speaker_names = np.array([item[2] for item in items])
+        unique_speaker_names = np.unique(speaker_names).tolist()
+        speaker_ids = [unique_speaker_names.index(l) for l in speaker_names]
+        speaker_count = np.array(
+            [len(np.where(speaker_names == l)[0]) for l in unique_speaker_names]
+        )
+        weight_speaker = 1.0 / speaker_count
+
+        speaker_samples_weight = np.array(
+            np.array([weight_speaker[l] for l in speaker_ids])
+        )
+        speaker_samples_weight = speaker_samples_weight / np.linalg.norm(
+            speaker_samples_weight
+        )
+        speaker_samples_weight = torch.from_numpy(speaker_samples_weight).float()
+        print("speaker_samples_weight", speaker_samples_weight)
+        dataset_samples_weight += speaker_samples_weight * 1.2
+
+    # emotion
+    if by_emotion:
+        emotion_names = np.array([item[2] for item in items])
+        unique_emotion_names = np.unique(emotion_names).tolist()
+        emotion_ids = [unique_emotion_names.index(l) for l in emotion_names]
+        emotion_count = np.array(
+            [len(np.where(emotion_names == l)[0]) for l in unique_emotion_names]
+        )
+        weight_emotion = 1.0 / emotion_count
+
+        print(weight_emotion * 10000)
+
+        emotion_samples_weight = np.array(
+            np.array([weight_emotion[l] for l in emotion_ids])
+        )
+        emotion_samples_weight = emotion_samples_weight / np.linalg.norm(
+            emotion_samples_weight
+        )
+        emotion_samples_weight = torch.from_numpy(emotion_samples_weight).float()
+        print("emotion_samples_weight", emotion_samples_weight)
+        dataset_samples_weight += emotion_samples_weight
+
+    # dataset_samples_weight = (speaker_samples_weight * 1.5) + (emotion_samples_weight)
+    # dataset_samples_weight = (language_samples_weight * 2) + (speaker_samples_weight)
+    return WeightedRandomSampler(dataset_samples_weight, len(dataset_samples_weight))
