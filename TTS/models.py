@@ -663,8 +663,8 @@ class ProsodyPredictor(nn.Module):
     def forward(self, texts, style, text_lengths, alignment, m):
         d = self.text_encoder(texts, style, text_lengths, m)
 
-        batch_size = d.shape[0]
-        text_size = d.shape[1]
+        # batch_size = d.shape[0]
+        # text_size = d.shape[1]
 
         # predict duration
         input_lengths = text_lengths.cpu().numpy()
@@ -859,13 +859,57 @@ def build_model(args, text_aligner, pitch_extractor):
     return nets
 
 
+def set_init_dict(model_dict, checkpoint_state, skip_layers=None):
+    # Partial initialization: if there is a mismatch with new and old layer, it is skipped.
+    for k, v in checkpoint_state.items():
+        if k not in model_dict:
+            print(" | > Layer missing in the model definition: {}".format(k))
+    # 1. filter out unnecessary keys
+    filtered_dict = {k: v for k, v in checkpoint_state.items() if k in model_dict}
+
+    if skip_layers:
+        print("Skipping Layers: ", skip_layers)
+        filtered_dict = {
+            k: v
+            for k, v in checkpoint_state.items()
+            if not any([layer in k for layer in skip_layers])
+        }
+
+    # 2. filter out different size layers
+    pretrained_dict = {
+        k: v for k, v in filtered_dict.items() if v.numel() == model_dict[k].numel()
+    }
+
+    for k, v in pretrained_dict.items():
+        if k not in model_dict.keys():
+            print("Missing:", k)
+
+    # 3. overwrite entries in the existing state dict
+    model_dict.update(pretrained_dict)
+
+    print(
+        " | > {} / {} layers are restored.".format(
+            len(pretrained_dict), len(model_dict)
+        )
+    )
+    return model_dict
+
+
 def load_checkpoint(model, optimizer, path, load_only_params=True):
     state = torch.load(path, map_location="cpu")
     params = state["net"]
+
     for key in model:
         if key in params:
             print("%s loaded" % key)
-            model[key].load_state_dict(params[key])
+
+            if hasattr(model, "module"):
+                state_dict = model[key].module.state_dict()
+            else:
+                state_dict = model[key].state_dict()
+
+            model_dict = set_init_dict(state_dict, params[key])
+            model[key].load_state_dict(model_dict)
     _ = [model[key].eval() for key in model]
 
     if not load_only_params:

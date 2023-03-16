@@ -30,6 +30,8 @@ import time
 
 from torch.utils.tensorboard import SummaryWriter
 
+torch.backends.cudnn.benchmark = False
+
 # simple fix for dataparallel that allows access to class attributes
 class MyDataParallel(torch.nn.DataParallel):
     def __getattr__(self, name):
@@ -85,7 +87,7 @@ def main(config_path):
     train_dataloader = build_dataloader(
         train_list,
         batch_size=batch_size,
-        num_workers=8,
+        num_workers=12,
         dataset_config={},
         device=device,
     )
@@ -149,12 +151,13 @@ def main(config_path):
 
     for epoch in range(start_epoch, epochs):
         running_loss = 0
-        start_time = time.time()
         criterion = nn.L1Loss()
 
         _ = [model[key].train() for key in model]
 
         for i, batch in enumerate(train_dataloader):
+
+            start_time = time.time()
 
             batch = [b.to(device) for b in batch]
             texts, input_lengths, mels, mel_input_length = batch
@@ -318,7 +321,7 @@ def main(config_path):
             iters = iters + 1
             if (i + 1) % log_interval == 0:
                 logger.info(
-                    "Epoch [%d/%d], Step [%d/%d], Mel Loss: %.5f, Adv Loss: %.5f, Disc Loss: %.5f, Mono Loss: %.5f, S2S Loss: %.5f"
+                    "Epoch [%d/%d], Step [%d/%d], Mel Loss: %.5f, Adv Loss: %.5f, Disc Loss: %.5f, Mono Loss: %.5f, S2S Loss: %.5f, Step Time: %.4f"
                     % (
                         epoch + 1,
                         epochs,
@@ -329,6 +332,7 @@ def main(config_path):
                         d_loss.item(),
                         loss_mono,
                         loss_s2s,
+                        time.time() - start_time,
                     )
                 )
 
@@ -339,7 +343,6 @@ def main(config_path):
                 writer.add_scalar("train/s2s_loss", loss_s2s, iters)
 
                 running_loss = 0
-        print("Time elasped:", time.time() - start_time)
 
         loss_test = 0
 
@@ -448,7 +451,7 @@ def main(config_path):
 
         print("Epochs:", epoch + 1)
         logger.info("Validation mel loss: %.3f" % (loss_test / iters_test))
-        print("\n\n\n")
+        print("\n\n")
 
         writer.add_scalar("eval/mel_loss", loss_test / iters_test, epoch + 1)
         attn_image = get_image(s2s_attn[0].cpu().numpy().squeeze())
@@ -470,16 +473,16 @@ def main(config_path):
             save_path = osp.join(log_dir, "epoch_1st_%05d.pth" % epoch)
             torch.save(state, save_path)
 
-    print("Saving..")
-    state = {
-        "net": {key: model[key].state_dict() for key in model},
-        "optimizer": optimizer.state_dict(),
-        "iters": iters,
-        "val_loss": loss_test / iters_test,
-        "epoch": epoch,
-    }
-    save_path = osp.join(log_dir, config.get("first_stage_path", "first_stage.pth"))
-    torch.save(state, save_path)
+        print("Saving Latest Checkpoint..")
+        state = {
+            "net": {key: model[key].state_dict() for key in model},
+            "optimizer": optimizer.state_dict(),
+            "iters": iters,
+            "val_loss": loss_test / iters_test,
+            "epoch": epoch,
+        }
+        save_path = osp.join(log_dir, "first_stage.pth")
+        torch.save(state, save_path)
 
 
 if __name__ == "__main__":

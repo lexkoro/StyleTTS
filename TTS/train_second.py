@@ -104,7 +104,7 @@ def main(config_path):
     train_dataloader = build_dataloader(
         train_list,
         batch_size=batch_size,
-        num_workers=8,
+        num_workers=12,
         dataset_config={},
         device=device,
     )
@@ -150,12 +150,14 @@ def main(config_path):
     if config.get("pretrained_model", "") != "" and config.get(
         "second_stage_load_pretrained", False
     ):
+
         model, optimizer, start_epoch, iters = load_checkpoint(
             model,
             optimizer,
             config["pretrained_model"],
             load_only_params=config.get("load_only_params", True),
         )
+        print(f"Loaded the second stage model at epoch {start_epoch} and step {iters}.")
     else:
         start_epoch = 0
         iters = 0
@@ -172,8 +174,6 @@ def main(config_path):
             raise ValueError("You need to specify the path to the first stage model.")
 
     best_loss = float("inf")  # best test loss
-    loss_train_record = list([])
-    loss_test_record = list([])
 
     loss_params = Munch(config["loss_params"])
     TMA_epoch = loss_params.TMA_epoch
@@ -181,7 +181,6 @@ def main(config_path):
 
     for epoch in range(epochs):
         running_loss = 0
-        start_time = time.time()
         criterion = nn.L1Loss()
 
         _ = [model[key].eval() for key in model]
@@ -190,6 +189,7 @@ def main(config_path):
         model.discriminator.train()
         for i, batch in enumerate(train_dataloader):
 
+            start_time = time.time()
             batch = [b.to(device) for b in batch]
             texts, input_lengths, mels, mel_input_length = batch
 
@@ -259,6 +259,7 @@ def main(config_path):
                 s = torch.stack(ss).squeeze()
 
             d, _ = model.predictor(t_en, s, input_lengths, s2s_attn_mono, m)
+
             # augmentation
             with torch.no_grad():
                 M = np.random.random()
@@ -344,8 +345,8 @@ def main(config_path):
             p_en = torch.stack(p_en)
             gt = torch.stack(gt).detach()
 
-            if gt.size(-1) < 80:
-                continue
+            # if gt.size(-1) < 80:
+            #     continue
 
             with torch.no_grad():
                 s = model.style_encoder(gt.unsqueeze(1))
@@ -419,7 +420,7 @@ def main(config_path):
             iters = iters + 1
             if (i + 1) % log_interval == 0:
                 print(
-                    "Epoch [%d/%d], Step [%d/%d], Loss: %.5f, Avd Loss: %.5f,  Disc Loss: %.5f, Dur Loss: %.5f, Norm Loss: %.5f, F0 Loss: %.5f"
+                    "Epoch [%d/%d], Step [%d/%d], Loss: %.5f, Avd Loss: %.5f,  Disc Loss: %.5f, Dur Loss: %.5f, Norm Loss: %.5f, F0 Loss: %.5f, Step time: %.4f"
                     % (
                         epoch + 1,
                         epochs,
@@ -431,6 +432,7 @@ def main(config_path):
                         loss_dur,
                         loss_norm_rec,
                         loss_F0_rec,
+                        time.time() - start_time,
                     )
                 )
 
@@ -442,7 +444,6 @@ def main(config_path):
                 writer.add_scalar("train/F0_loss", loss_F0_rec, iters)
 
                 running_loss = 0
-        print("Time elasped:", time.time() - start_time)
 
         loss_test = 0
         loss_align = 0
@@ -588,6 +589,17 @@ def main(config_path):
             }
             save_path = osp.join(log_dir, "epoch_2nd_%05d.pth" % epoch)
             torch.save(state, save_path)
+
+        print("Saving Latest Checkpoint..")
+        state = {
+            "net": {key: model[key].state_dict() for key in model},
+            "optimizer": optimizer.state_dict(),
+            "iters": iters,
+            "val_loss": loss_test / iters_test,
+            "epoch": epoch,
+        }
+        save_path = osp.join(log_dir, "second_stage.pth")
+        torch.save(state, save_path)
 
 
 if __name__ == "__main__":

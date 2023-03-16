@@ -20,9 +20,6 @@ MAX_WAV_VALUE = 32768.0
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-np.random.seed(1)
-random.seed(1)
-
 
 def dynamic_range_compression(x, C=1, clip_val=1e-5):
     return np.log(np.clip(x, a_min=clip_val, a_max=None) * C)
@@ -111,16 +108,25 @@ class FilePathDataset(torch.utils.data.Dataset):
     ):
 
         _data_list = [l[:-1].split("|") for l in data_list]
-        self.min_seq_len = int(0.6 * 22050)
-        self.data_list = [
-            (data[0], data[4], data[1])
-            for data in _data_list
-            if ((Path(data[0]).stat().st_size // 2) > self.min_seq_len)
-        ]
+        self.min_seq_len = int(0.8 * 22050)
         self.text_cleaner = TextCleaner()
         self.sr = sr
-
         self.max_mel_length = 192
+
+        self.data_list = self._filter(_data_list)
+
+    def _filter(self, data):
+        data_list = [
+            (data[0], data[4], data[1])
+            for data in data
+            if (
+                (Path(data[0]).stat().st_size // 2) > self.min_seq_len
+                and len(data[4]) > 5
+            )
+        ]
+        print("data_list length: ", len(data))
+        print("filtered data_list length: ", len(data_list))
+        return data_list
 
     def __len__(self):
         return len(self.data_list)

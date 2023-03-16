@@ -1,14 +1,14 @@
 log_dir: "Models/GameTTS"
-first_stage_path: ""
-save_freq: 2
+first_stage_path: "/home/alexander/Projekte/StyleTTS/TTS/Models/GameTTS/first_stage.pth"
+save_freq: 10
 log_interval: 50
 device: "cuda"
 multigpu: true
 epochs_1st: 250 # number of epochs for first stage training
 epochs_2nd: 100 # number of peochs for second stage training
-batch_size: 64
-pretrained_model: ""
-second_stage_load_pretrained: false # set to true if the pre-trained model is for 2nd stage
+batch_size: 32
+pretrained_model: "/home/alexander/Projekte/StyleTTS/TTS/Models/GameTTS/second_stage.pth"
+second_stage_load_pretrained: true # set to true if the pre-trained model is for 2nd stage
 load_only_params: false # set to true if do not want to load epoch numbers and optimizer parameters
 
 # train_data: [
@@ -29,22 +29,21 @@ load_only_params: false # set to true if do not want to load epoch numbers and o
 #         ]
 
 # /home/alexander/Projekte/TTS_Data/metadata/filelists
-
 train_data: [
-            /home/alexander/Projekte/TTS_Data/metadata/filelists/gametts_de.csv,
+            #/home/alexander/Projekte/TTS_Data/metadata/filelists/gametts_de.csv,
             /home/alexander/Projekte/TTS_Data/metadata/filelists/borderlands2_de.csv,
-            /home/alexander/Projekte/TTS_Data/metadata/filelists/sqnarrator.csv,
+            #/home/alexander/Projekte/TTS_Data/metadata/filelists/sqnarrator.csv,
             /home/alexander/Projekte/TTS_Data/metadata/filelists/borderlands2_en.csv,
-            /home/alexander/Projekte/TTS_Data/metadata/filelists/fallout4_en.csv,
-            /home/alexander/Projekte/TTS_Data/metadata/filelists/warcraft_en.csv,
+            #/home/alexander/Projekte/TTS_Data/metadata/filelists/fallout4_en.csv,
+            #/home/alexander/Projekte/TTS_Data/metadata/filelists/warcraft_en.csv,
             # /home/akorolev/master/projects/vits-emotts/filelists/witcher3_pl.csv,
             # /home/akorolev/master/projects/vits-emotts/filelists/witcher3_ru.csv,
             # /home/akorolev/master/projects/vits-emotts/filelists/emotional_train.csv
         ]
 
-val_data: [/home/alexander/Projekte/TTS_Data/metadata/filelists/test.csv]
+val_data: [/home/alexander/Projekte/TTS_Data/metadata/filelists/gametts_test.csv]
 
-F0_path: "/home/alexander/Projekte/StyleTTS/TTS/Utils/JDC/epoch_00070.pth"
+F0_path: "/home/alexander/Projekte/StyleTTS/PitchExtractor/Checkpoint/epoch_00080.pth"
 ASR_config: "/home/alexander/Projekte/StyleTTS/TTS/Utils/ASR/config.yml"
 ASR_path: "/home/alexander/Projekte/StyleTTS/TTS/Utils/ASR/epoch_00100.pth"
 
@@ -58,9 +57,9 @@ preprocess_params:
 model_params:
   hidden_dim: 512
   n_token: 95
-  style_dim: 128
+  style_dim: 256
   n_layer: 3
-  dim_in: 64
+  dim_in: 128
   max_conv_dim: 512
   n_mels: 80
   dropout: 0.2
@@ -73,7 +72,7 @@ loss_params:
     
     lambda_mono: 1. # monotonic alignment loss (1st stage, TMA)
     lambda_s2s: 1. # sequence-to-sequence loss (1st stage, TMA)
-    TMA_epoch: 20 # TMA starting epoch (1st stage)
+    TMA_epoch: 5 # TMA starting epoch (1st stage)
 
     # https://github.com/yl4579/StyleTTS/issues/7
     TMA_CEloss: false # whether to use cross-entropy (CE) loss for TMA
