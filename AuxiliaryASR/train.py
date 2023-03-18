@@ -66,7 +66,7 @@ def main(config_path):
         val_list,
         batch_size=batch_size,
         validation=True,
-        num_workers=2,
+        num_workers=4,
         device=device,
         dataset_config=config.get("dataset_params", {}),
     )

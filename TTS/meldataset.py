@@ -12,6 +12,7 @@ from librosa.filters import mel as librosa_mel_fn
 from pathlib import Path
 from text_utils import TextCleaner
 from torch.utils.data.sampler import WeightedRandomSampler
+from librosa.util import normalize
 
 import logging
 
@@ -117,7 +118,7 @@ class FilePathDataset(torch.utils.data.Dataset):
 
     def _filter(self, data):
         data_list = [
-            (data[0], data[4], data[1])
+            (data[0], data[4], data[1], data[3])
             for data in data
             if (
                 (Path(data[0]).stat().st_size // 2) > self.min_seq_len
@@ -157,8 +158,11 @@ class FilePathDataset(torch.utils.data.Dataset):
         return speaker_id, acoustic_feature, text_tensor, path
 
     def _load_tensor(self, data):
-        wave_path, text, speaker_id = data
+        wave_path, text, speaker_id, _ = data
         wave, sr = sf.read(wave_path)
+        audio = wave / MAX_WAV_VALUE
+        wave = normalize(audio) * 0.95
+
         if wave.shape[-1] == 2:
             wave = wave[:, 0].squeeze()
         if sr != 22050:
@@ -241,7 +245,7 @@ def build_dataloader(
             dataset.data_list,
             by_emotion=False,
             by_speaker=True,
-            by_language=False,
+            by_language=True,
         )
 
     data_loader = DataLoader(

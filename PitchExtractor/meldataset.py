@@ -85,10 +85,10 @@ hann_window = {}
 def mel_spectrogram(
     y, n_fft, num_mels, sampling_rate, hop_size, win_size, fmin, fmax, center=False
 ):
-    # if torch.min(y) < -1.0:
-    #     print("min value is ", torch.min(y))
-    # if torch.max(y) > 1.0:
-    #     print("max value is ", torch.max(y))
+    if torch.min(y) < -1.0:
+        print("min value is ", torch.min(y))
+    if torch.max(y) > 1.0:
+        print("max value is ", torch.max(y))
 
     global mel_basis, hann_window
     if fmax not in mel_basis:
@@ -142,12 +142,7 @@ class MelDataset(torch.utils.data.Dataset):
         _data_list = [l[:-1].split("|") for l in data_list]
         self.min_seq_len = int(1.1 * 22050)
         self.sr = sr
-        self.n_fft = 1024
-        self.num_mels = 100
         self.hop_size = 256
-        self.win_size = 1024
-        self.fmin = 0
-        self.fmax = None
 
         self.data_augmentation = data_augmentation and (not validation)
         self.max_mel_length = 192
@@ -254,7 +249,9 @@ class MelDataset(torch.utils.data.Dataset):
     def _load_tensor(self, data):
         wave_path = data
         wave, sr = sf.read(wave_path)
-        wave_tensor = torch.from_numpy(wave).float()
+        audio = wave / MAX_WAV_VALUE
+        audio = normalize(audio) * 0.95
+        wave_tensor = torch.from_numpy(audio).float()
         return wave_tensor
 
 

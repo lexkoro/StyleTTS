@@ -128,6 +128,7 @@ def main(config_path):
     )
 
     if config.get("pretrained_model", "") != "":
+        print("Loading pretrained model from %s" % config["pretrained_model"])
         trainer.load_checkpoint(
             config["pretrained_model"],
             load_only_params=config.get("load_only_params", True),

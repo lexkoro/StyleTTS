@@ -57,9 +57,9 @@ preprocess_params:
 model_params:
   hidden_dim: 512
   n_token: 95
-  style_dim: 256
+  style_dim: 128
   n_layer: 3
-  dim_in: 128
+  dim_in: 64
   max_conv_dim: 512
   n_mels: 80
   dropout: 0.2
@@ -72,7 +72,7 @@ loss_params:
     
     lambda_mono: 1. # monotonic alignment loss (1st stage, TMA)
     lambda_s2s: 1. # sequence-to-sequence loss (1st stage, TMA)
-    TMA_epoch: 5 # TMA starting epoch (1st stage)
+    TMA_epoch: 20 # TMA starting epoch (1st stage)
 
     # https://github.com/yl4579/StyleTTS/issues/7
     TMA_CEloss: false # whether to use cross-entropy (CE) loss for TMA

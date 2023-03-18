@@ -1,25 +1,29 @@
-log_dir: "Checkpoint"
+log_dir: "Checkpoint_GameTTS"
 save_freq: 5
 device: "cuda"
 epochs: 150
 batch_size: 64
-pretrained_model: "/home/akorolev/master/projects/StyleTTS/AuxiliaryASR/Checkpoint/epoch_00010.pth"
+pretrained_model: ""
 train_data: [
-            "/home/akorolev/master/projects/vits-emotts/filelists/borderlands2_en.csv",
-            "/home/akorolev/master/projects/vits-emotts/filelists/borderlands2_en.csv",
-            "/home/akorolev/master/projects/vits-emotts/filelists/emotional_train.csv",
-            "/home/akorolev/master/projects/vits-emotts/filelists/fallout4_en.csv",
-            "/home/akorolev/master/projects/vits-emotts/filelists/gametts_de.csv",
-            "/home/akorolev/master/projects/vits-emotts/filelists/kcd_de.csv",
-            "/home/akorolev/master/projects/vits-emotts/filelists/skyrim_jp.csv",
-            "/home/akorolev/master/projects/vits-emotts/filelists/sqnarrator.csv",
-            "/home/akorolev/master/projects/vits-emotts/filelists/warcraft_en.csv",
-            "/home/akorolev/master/projects/vits-emotts/filelists/witcher3_pl.csv",
-            "/home/akorolev/master/projects/vits-emotts/filelists/witcher3_ru.csv",
-            "/home/akorolev/master/projects/vits-emotts/filelists/witcher3_skyrim_en.csv",
-            "/home/akorolev/master/projects/vits-emotts/filelists/worldofwarcraft.csv"
+            "/home/alexander/Projekte/TTS_Data/metadata/filelists/borderlands2_en.csv",
+            "/home/alexander/Projekte/TTS_Data/metadata/filelists/borderlands2_de.csv",
+            "/home/alexander/Projekte/TTS_Data/metadata/filelists/emotional_train.csv",
+            "/home/alexander/Projekte/TTS_Data/metadata/filelists/fallout4_en.csv",
+            "/home/alexander/Projekte/TTS_Data/metadata/filelists/gametts_de.csv",
+            "/home/alexander/Projekte/TTS_Data/metadata/filelists/kcd_de.csv",
+            "/home/alexander/Projekte/TTS_Data/metadata/filelists/sqnarrator.csv",
+            "/home/alexander/Projekte/TTS_Data/metadata/filelists/warcraft_en.csv",
+            "/home/alexander/Projekte/TTS_Data/metadata/filelists/witcher3_pl.csv",
+            "/home/alexander/Projekte/TTS_Data/metadata/filelists/witcher3_ru.csv",
+            "/home/alexander/Projekte/TTS_Data/metadata/filelists/witcher3_skyrim_en.csv",
+            "/home/alexander/Projekte/TTS_Data/metadata/filelists/worldofwarcraft.csv",
+            "/home/alexander/Projekte/TTS_Data/metadata/filelists/skyrim_jp.csv",
+            "/home/alexander/Projekte/TTS_Data/metadata/filelists/libritts_train.csv",
         ]
-val_data: ["/home/akorolev/master/projects/vits-emotts/filelists/test.csv"]
+val_data: [
+          "/home/alexander/Projekte/TTS_Data/metadata/filelists/libritts_test.csv",
+          "/home/alexander/Projekte/TTS_Data/metadata/filelists/pitch_test.csv"
+          ]
 
 preprocess_parasm:
   sr: 22050
